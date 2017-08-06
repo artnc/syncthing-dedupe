@@ -55,6 +55,7 @@ def dedupe(folder):
 
     # Find files to delete
     files_to_delete = set()
+    bytes_to_delete = 0
     for fpath, size in walk_paths(stversions):
         if size < MIN_FILE_SIZE_TO_DELETE:
             continue
@@ -62,7 +63,8 @@ def dedupe(folder):
         if len(files) != 1:
             continue
         if hash_file(fpath) == hash_file(next(iter(files))):
-            files_to_delete.add(fpath)
+            files_to_delete.add((fpath, size))
+            bytes_to_delete += size
 
     # Confirm and delete
     if not files_to_delete:
@@ -70,9 +72,11 @@ def dedupe(folder):
         return
     files_to_delete = sorted(files_to_delete)
     print('Duplicate files to delete:')
-    for fpath in files_to_delete:
-        print('\t{}'.format(fpath))
-    if input('Delete {} files? [y/n]: '.format(len(files_to_delete))) == 'y':
+    for fpath, size in files_to_delete:
+        print('{:12d} bytes: {}'.format(size, fpath))
+    prompt = 'Delete {} files totaling {} bytes? [y/n]: '.format(
+        len(files_to_delete), bytes_to_delete)
+    if input(prompt) == 'y':
         for fpath in files_to_delete:
             os.remove(fpath)
     print('Done.')
