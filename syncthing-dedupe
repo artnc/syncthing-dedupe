@@ -9,11 +9,13 @@ import sys
 MIN_FILE_SIZE_TO_DELETE = 1
 
 
-def walk_paths(top):
+def walk_paths(top, skip_stversions=False):
     """
     Yield file paths and sizes found via os.walk.
     """
     for root, _, fnames in os.walk(top):
+        if skip_stversions and '.stversions' in root:
+            continue
         for fname in fnames:
             fpath = os.path.join(root, fname)
             yield fpath, os.path.getsize(fpath)
@@ -49,7 +51,7 @@ def dedupe(folder):
 
     # Get file sizes of all sync folder files
     sizes_to_files = defaultdict(set)
-    for fpath, size in walk_paths(folder):
+    for fpath, size in walk_paths(folder, skip_stversions=True):
         if size >= MIN_FILE_SIZE_TO_DELETE:
             sizes_to_files[size].add(fpath)
 

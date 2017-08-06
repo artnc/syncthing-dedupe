@@ -1,6 +1,6 @@
 # syncthing-dedupe
 
-When you move or otherwise rename files in a versioned Syncthing folder, they get copied to `.stversions`. That's because Syncthing sees renames as separate delete and create operations.
+When you move or otherwise rename files in a versioned Syncthing folder, they get copied to `.stversions`. That's because Syncthing [sees renames](https://forum.syncthing.net/t/why-does-rename-move-put-file-s-in-stversions-dir/2757) as separate delete and create operations.
 
 syncthing-dedupe is a quick and dirty script for purging `.stversions` of all files that actually still exist in the Syncthing folder.
 
