@@ -62,8 +62,9 @@ def dedupe(folder):
         files = sizes_to_files[size]
         if len(files) != 1:
             continue
-        if hash_file(fpath) == hash_file(next(iter(files))):
-            files_to_delete.add((fpath, size))
+        match = next(iter(files))
+        if hash_file(fpath) == hash_file(match):
+            files_to_delete.add((fpath, size, match))
             bytes_to_delete += size
 
     # Confirm and delete
@@ -72,8 +73,10 @@ def dedupe(folder):
         return
     files_to_delete = sorted(files_to_delete)
     print('Duplicate files to delete:')
-    for fpath, size in files_to_delete:
-        print('{:12d} bytes: {}'.format(size, fpath))
+    prefix_length = len(folder) + 1
+    for fpath, size, match in files_to_delete:
+        print('{:12d} bytes: {} (={})'.format(
+            size, fpath[prefix_length:], match[prefix_length:]))
     prompt = 'Delete {} files totaling {} bytes? [y/n]: '.format(
         len(files_to_delete), bytes_to_delete)
     if input(prompt) == 'y':
