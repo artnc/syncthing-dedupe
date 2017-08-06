@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+from collections import defaultdict
+import functools
+import hashlib
+import os
+import sys
+
+MIN_FILE_SIZE_TO_DELETE = 1
+
+
+def walk_paths(top):
+    """
+    Yield file paths and sizes found via os.walk.
+    """
+    for root, _, fnames in os.walk(top):
+        for fname in fnames:
+            fpath = os.path.join(root, fname)
+            yield fpath, os.path.getsize(fpath)
+
+
+@functools.lru_cache(maxsize=None)
+def hash_file(path):
+    """
+    Parameters:
+        path (str): Absolute path to file.
+    """
+    hasher = hashlib.sha256()
+    with open(path, 'rb') as f:
+        while True:
+            block = f.read(65536)
+            if not block:
+                break
+            hasher.update(block)
+    return hasher.digest()
+
+
+def dedupe(folder):
+    """
+    Parameters:
+        folder (str): Absolute path to Syncthing folder.
+    """
+    # Check that .stversions exists
+    stversions = os.path.join(folder, '.stversions')
+    if not os.path.isdir(stversions):
+        print('Folder "{}" not found!'.format(stversions))
+        print('Check that Syncthing file versioning is enabled on this device.')
+        sys.exit(1)
+
+    # Get file sizes of all sync folder files
+    sizes_to_files = defaultdict(set)
+    for fpath, size in walk_paths(folder):
+        if size >= MIN_FILE_SIZE_TO_DELETE:
+            sizes_to_files[size].add(fpath)
+
+    # Find files to delete
+    files_to_delete = set()
+    for fpath, size in walk_paths(stversions):
+        if size < MIN_FILE_SIZE_TO_DELETE:
+            continue
+        files = sizes_to_files[size]
+        if len(files) != 1:
+            continue
+        if hash_file(fpath) == hash_file(next(iter(files))):
+            files_to_delete.add(fpath)
+
+    # Confirm and delete
+    if not files_to_delete:
+        print('No duplicate files to delete!')
+        return
+    files_to_delete = sorted(files_to_delete)
+    print('Duplicate files to delete:')
+    for fpath in files_to_delete:
+        print('\t{}'.format(fpath))
+    if input('Delete {} files? [y/n]: '.format(len(files_to_delete))) == 'y':
+        for fpath in files_to_delete:
+            os.remove(fpath)
+    print('Done.')
+
+
+def main():
+    if len(sys.argv) != 2:
+        print('Usage: ./syncthing-dedupe /path/to/sync/folder')
+        sys.exit(1)
+    dedupe(os.path.abspath(sys.argv[1]))
+
+
+if __name__ == '__main__':
+    main()
